@@ -1,0 +1,67 @@
+#!/bin/bash
+
+USAGE='USAGE:
+  cg [OPTIONS]...
+OPTIONS:
+  -v, --var           Search for variable definitions with the name specified
+  -f, --function      Search for functions or methods with the name spacified
+  -c, --comment       Search for the specified text in a comment
+  -h, --help          Display this message
+'
+
+while [[ $# -gt 1 ]]; do
+  key="$1"
+  case $key in
+      -v|--var)
+        var="$2"
+        shift
+        ;;
+      -f|--function)
+        function="$2"
+        shift
+        ;;
+      -c|--comment)
+        comment="$2"
+        shift
+        ;;
+      --default)
+        DEFAULT=YES
+        shift
+        ;;
+      *)
+        echo "Bad arguments found: ${key}"
+        echo "${USAGE}"
+        exit 1
+      ;;
+  esac
+  shift   # skip option value
+done
+path="${1:-.}"
+
+if [[ $1 == "-h" || $1 == "--help" ]]; then
+  echo "${USAGE}"
+  exit 0
+fi
+
+# Consts
+SCRIPT_PATH=perl_script.pl
+OPTIONS=iIrn
+FILE_EXCLUDE_ARG="! - path"
+SEARCH_PATTERNS=
+
+# Configuration
+FILE_EXCLUDE_LIST=[".git/*",".svn/*"]
+
+if [ -n "${function}" ]; then
+  pattern="[^\S\n]*def \w*${function}\w*\s*\(\s*\S+\s*(?:,\s*\S+)*\):"
+elif [ -n "${var}" ]; then
+  pattern=".*\b\w*${var}\w*[,\s\w+]*[^\S\n]*\=.*"
+elif [ -n "${comment}" ]; then
+  pattern="[^\s\n]*#.*${comment}.*"
+fi
+
+script=`cat perl_script.pl`
+script="${script/\$pattern/${pattern}}"
+
+find "${path}" -type f -exec perl -lE "${script}" {} \;
+
